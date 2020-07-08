@@ -1,8 +1,9 @@
 from django.shortcuts import render
-from django.core.paginator import Paginator
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from .models import Album, Artist, Contact, Booking
-
+from .forms import ContactForm
+from django.shortcuts import get_object_or_404
+from .forms import ContactForm, ParagraphErrorList
 
 def index(request):
     albums = Album.objects.filter(available=True).order_by('-created_at')[:12]
@@ -13,7 +14,7 @@ def index(request):
 
 def listing(request):
     albums_list = Album.objects.filter(available=True)
-    paginator = Paginator(albums_list, 9)
+    paginator = Paginator(albums_list, 3)
     page = request.GET.get('page')
     try:
         albums = paginator.page(page)
@@ -24,12 +25,13 @@ def listing(request):
         # If page is out of range (e.g. 9999), deliver last page of results.
         albums = paginator.page(paginator.num_pages)
     context = {
-        'albums': albums
+        'albums': albums,
+        'paginate': True
     }
     return render(request, 'store/listing.html', context)
 
 def detail(request, album_id):
-    album = Album.objects.get(pk=album_id)
+    album = get_object_or_404(Album, pk=album_id)
     artists = [artist.name for artist in album.artists.all()]
     artists_name = " ".join(artists)
     context = {
@@ -38,7 +40,42 @@ def detail(request, album_id):
         'album_id': album.id,
         'thumbnail': album.picture
     }
+    if request.method == 'POST':
+        form = ContactForm(request.POST, error_class=ParagraphErrorList)
+        if form.is_valid():
+            email = form.cleaned_data['email']
+            name = form.cleaned_data['name']
+
+            contact = Contact.objects.filter(email=email)
+            if not contact.exists():
+                # If a contact is not registered, create a new one.
+                contact = Contact.objects.create(
+                    email=email,
+                    name=name
+                )
+            else:
+                contact = contact.first()
+
+            album = get_object_or_404(Album, id=album_id)
+            booking = Booking.objects.create(
+                contact=contact,
+                album=album
+            )
+            album.available = False
+            album.save()
+            context = {
+                'album_title': album.title
+            }
+            return render(request, 'store/merci.html', context)
+        else:
+            # Form data doesn't match the expected format.
+            # Add errors to the template.
+            context['errors'] = form.errors.items()
+    else:
+        form = ContactForm()
+    context['form'] = form
     return render(request, 'store/detail.html', context)
+
 
 
 def search(request):

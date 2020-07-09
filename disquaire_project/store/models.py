@@ -6,6 +6,8 @@ class Artist(models.Model):
 
     def __str__(self):
         return self.name
+    class Meta:
+        verbose_name = "artiste"
 
 
 class Contact(models.Model):
@@ -14,6 +16,8 @@ class Contact(models.Model):
 
     def __str__(self):
         return self.name
+    class Meta:
+        verbose_name = "prospect"
 
 
 class Album(models.Model):
@@ -26,15 +30,19 @@ class Album(models.Model):
 
     def __str__(self):
         return self.title
+    class Meta:
+        verbose_name = "disque"
 
 class Booking(models.Model):
-    created_at = models.DateTimeField(auto_now_add=True)
-    contacted = models.BooleanField(default=False)
+    created_at = models.DateTimeField("date d'envoi",auto_now_add=True)
+    contacted = models.BooleanField("demande traitée ?",default=False)
     album = models.OneToOneField(Album, on_delete=models.CASCADE)
     contact = models.ForeignKey(
     'Contact',
     on_delete=models.CASCADE,
 )
-
     def __str__(self):
         return self.contact.name
+    class Meta:
+        verbose_name = "réservation"
+
